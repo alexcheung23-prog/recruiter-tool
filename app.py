@@ -123,14 +123,38 @@ def main():
     You can either paste text directly or upload files (.txt, .pdf, .docx).
     """)
 
-    # Sidebar for API Key
+    # Sidebar for Configuration
     with st.sidebar:
         st.title("Configuration")
-        api_key = st.text_input("Gemini API Key", type="password", value=os.getenv("GOOGLE_API_KEY", ""))
-        if not api_key:
+        
+        # Try to get API key from environment
+        env_api_key = os.getenv("GOOGLE_API_KEY", "")
+        
+        # Use session state to manage the active key
+        if 'api_key' not in st.session_state:
+            st.session_state['api_key'] = env_api_key
+
+        api_key_input = st.text_input(
+            "Gemini API Key", 
+            type="password", 
+            value=st.session_state['api_key'],
+            help="The API key is automatically loaded from the backend if available. You can override it here."
+        )
+        
+        # Update session state if input changes
+        if api_key_input != st.session_state['api_key']:
+            st.session_state['api_key'] = api_key_input
+            st.rerun()
+
+        if not st.session_state['api_key']:
             st.warning("Please enter your Gemini API Key to proceed.")
+        else:
+            st.success("API Key loaded successfully.")
+            
         st.markdown("---")
         st.markdown("Developed for the Recruiter Notes Team")
+
+    api_key = st.session_state['api_key']
 
     # Initialize session state
     if 'generated_notes' not in st.session_state:
