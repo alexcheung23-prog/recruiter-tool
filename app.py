@@ -45,21 +45,31 @@ def generate_notes(job_description, candidate_conversation, api_key):
         model = get_gemini_model(api_key)
         
         prompt = f"""
-        You are an expert recruiter assistant. Your task is to provide a detailed and structured summary of a candidate screening conversation based on a Job Description.
+        You are an expert recruiter assistant. Your task is to provide a detailed, structured, and professional summary of a candidate screening conversation based on the provided Job Description.
 
-        Job Description:
+        ### Job Description:
         {job_description}
 
-        Candidate Conversation/Notes:
+        ### Candidate Conversation/Notes:
         {candidate_conversation}
 
-        Please provide a comprehensive summary of the conversation, structured by key topics or questions discussed. 
-        For each section:
-        - Highlight specific examples or achievements mentioned by the candidate.
-        - Explicitly state how the candidate's experience and skills align (or do not align) with the job requirements.
-        - Capture important details such as availability, salary expectations, or any concerns raised.
+        ### Output Requirements:
+        Please provide a comprehensive summary formatted for a hiring manager. Structure the notes into the following sections:
 
-        The summary should be professional, objective, and non-biased. Use clear headings and bullet points for readability.
+        1. **Executive Summary**: A high-level overview of the candidate and the overall impression of the conversation.
+        2. **Detailed Topic/Question Breakdown**:
+           - Break this section down by the specific topics or questions discussed during the interview.
+           - **Include specific examples, stories, or achievements** mentioned by the candidate for each topic.
+        3. **Job Description Alignment**:
+           - Explicitly map the candidate's skills and experience to the requirements listed in the Job Description.
+           - Highlight where they are a strong match and note any gaps.
+        4. **Logistics & Next Steps**:
+           - Mention specific details like salary expectations, notice period, availability for next rounds, and any other administrative details discussed.
+
+        ### Guidelines:
+        - **Objective & Non-Biased**: Stick to the facts of the conversation. Avoid subjective language.
+        - **Presentable**: Use clear headings, bold text for emphasis, and bullet points for readability.
+        - **Detailed**: Ensure specific examples from the candidate are captured to provide context to the hiring manager.
         """
         
         response = model.generate_content(prompt)
@@ -77,21 +87,25 @@ def refine_notes(job_description, candidate_conversation, previous_notes, refine
         model = get_gemini_model(api_key)
         
         prompt = f"""
-        You are an expert recruiter assistant. You have previously generated a summary of a candidate screening conversation. The user now wants to refine that summary.
+        You are an expert recruiter assistant. You have previously generated a summary of a candidate screening conversation. The user now wants to refine or reformat that summary.
 
-        Job Description:
+        ### Job Description:
         {job_description}
 
-        Candidate Conversation/Notes:
+        ### Candidate Conversation/Notes:
         {candidate_conversation}
 
-        Previous Summary:
+        ### Previous Summary:
         {previous_notes}
 
-        Refinement Instructions:
-        {refinement_instructions}
+        ### Refinement Instructions from the Recruiter:
+        "{refinement_instructions}"
 
-        Please provide an updated version of the summary by incorporating the refinement instructions. Maintain the same professional, objective, and structured format as before.
+        ### Task:
+        Please update the summary based on the instructions above. 
+        - If the user asks to "reformat", "shorten", or "focus on X", prioritize those instructions.
+        - Ensure the output remains professional, objective, and structured.
+        - If not specified otherwise, maintain the detailed sections (Executive Summary, Detailed Breakdown, Alignment, Logistics).
         """
         
         response = model.generate_content(prompt)
@@ -183,7 +197,8 @@ def main():
         )
 
         st.subheader("Refine Notes")
-        refinement_instructions = st.text_input("Enter further instructions to adjust the notes (e.g., 'make it shorter', 'focus more on technical skills')", key="refinement_input")
+        st.info("You can 'talk back' to the tool to reformat, shorten, or change the focus of the notes above. For example, you can say 'make it more concise' or 'elaborate more on the technical skills section'.")
+        refinement_instructions = st.text_input("Refinement Instructions", key="refinement_input", placeholder="Enter instructions to adjust the notes...")
         if st.button("Apply Refinement"):
             if refinement_instructions:
                 with st.spinner("Refining summary..."):
