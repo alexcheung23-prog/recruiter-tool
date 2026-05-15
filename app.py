@@ -32,37 +32,72 @@ def extract_text_from_file(uploaded_file):
     else:
         return ""
 
+def get_gemini_model(api_key):
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel('gemini-flash-latest')
+
 def generate_notes(job_description, candidate_conversation, api_key):
     if not api_key:
         st.error("Please provide a Gemini API Key.")
         return None
 
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-flash-latest')
+        model = get_gemini_model(api_key)
         
         prompt = f"""
-        You are an expert recruiter assistant. Your task is to summarize a candidate screening conversation based on a Job Description.
-        
+        You are an expert recruiter assistant. Your task is to provide a detailed and structured summary of a candidate screening conversation based on a Job Description.
+
         Job Description:
         {job_description}
-        
+
         Candidate Conversation/Notes:
         {candidate_conversation}
-        
-        Please provide a summary of the conversation in clear, non-biased bullet points. 
-        Focus on:
-        - Key points discussed during the conversation.
-        - How the candidate's experience and skills align with the job requirements.
-        - Any specific details mentioned by the candidate (availability, salary expectations, etc.).
-        
-        Maintain a professional and objective tone. Do not include personal opinions or biases.
+
+        Please provide a comprehensive summary of the conversation, structured by key topics or questions discussed. 
+        For each section:
+        - Highlight specific examples or achievements mentioned by the candidate.
+        - Explicitly state how the candidate's experience and skills align (or do not align) with the job requirements.
+        - Capture important details such as availability, salary expectations, or any concerns raised.
+
+        The summary should be professional, objective, and non-biased. Use clear headings and bullet points for readability.
         """
         
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.error(f"An error occurred during generation: {e}")
+        return None
+
+def refine_notes(job_description, candidate_conversation, previous_notes, refinement_instructions, api_key):
+    if not api_key:
+        st.error("Please provide a Gemini API Key.")
+        return None
+
+    try:
+        model = get_gemini_model(api_key)
+        
+        prompt = f"""
+        You are an expert recruiter assistant. You have previously generated a summary of a candidate screening conversation. The user now wants to refine that summary.
+
+        Job Description:
+        {job_description}
+
+        Candidate Conversation/Notes:
+        {candidate_conversation}
+
+        Previous Summary:
+        {previous_notes}
+
+        Refinement Instructions:
+        {refinement_instructions}
+
+        Please provide an updated version of the summary by incorporating the refinement instructions. Maintain the same professional, objective, and structured format as before.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        st.error(f"An error occurred during refinement: {e}")
         return None
 
 def main():
@@ -70,7 +105,7 @@ def main():
     
     st.title("📝 Recruiter Notes Generator")
     st.markdown("""
-    This tool helps recruiters summarize screening conversations into non-biased bullet points for hiring managers.
+    This tool helps recruiters summarize screening conversations into detailed, non-biased bullet points for hiring managers.
     You can either paste text directly or upload files (.txt, .pdf, .docx).
     """)
 
@@ -83,7 +118,9 @@ def main():
         st.markdown("---")
         st.markdown("Developed for the Recruiter Notes Team")
 
-    # Initialize session state for text areas if not present
+    # Initialize session state
+    if 'generated_notes' not in st.session_state:
+        st.session_state['generated_notes'] = ""
     if 'job_desc_text' not in st.session_state:
         st.session_state['job_desc_text'] = ""
     if 'candidate_notes_text' not in st.session_state:
@@ -102,7 +139,8 @@ def main():
             "Paste or edit Job Description", 
             value=st.session_state['job_desc_text'],
             height=300, 
-            placeholder="Paste the job description here..."
+            placeholder="Paste the job description here...",
+            key="jd_area"
         )
         
     with col2:
@@ -115,7 +153,8 @@ def main():
             "Paste or edit Candidate Conversation/Notes", 
             value=st.session_state['candidate_notes_text'],
             height=300, 
-            placeholder="Paste the screening notes or conversation transcript here..."
+            placeholder="Paste the screening notes or conversation transcript here...",
+            key="notes_area"
         )
 
     if st.button("Generate Notes"):
@@ -123,20 +162,43 @@ def main():
             with st.spinner("Generating summary..."):
                 notes = generate_notes(job_description, candidate_conversation, api_key)
                 if notes:
-                    st.divider()
-                    st.subheader("Generated Recruiter Notes")
-                    st.markdown(notes)
-                    st.download_button(
-                        label="Download Notes",
-                        data=notes,
-                        file_name="recruiter_notes.md",
-                        mime="text/markdown"
-                    )
+                    st.session_state['generated_notes'] = notes
         else:
             if not job_description:
                 st.error("Please provide a Job Description.")
             if not candidate_conversation:
                 st.error("Please provide Candidate Conversation/Notes.")
+
+    # Display and Refine Notes
+    if st.session_state['generated_notes']:
+        st.divider()
+        st.subheader("Recruiter Notes")
+        st.markdown(st.session_state['generated_notes'])
+        
+        st.download_button(
+            label="Download Notes",
+            data=st.session_state['generated_notes'],
+            file_name="recruiter_notes.md",
+            mime="text/markdown"
+        )
+
+        st.subheader("Refine Notes")
+        refinement_instructions = st.text_input("Enter further instructions to adjust the notes (e.g., 'make it shorter', 'focus more on technical skills')", key="refinement_input")
+        if st.button("Apply Refinement"):
+            if refinement_instructions:
+                with st.spinner("Refining summary..."):
+                    refined_notes = refine_notes(
+                        job_description, 
+                        candidate_conversation, 
+                        st.session_state['generated_notes'], 
+                        refinement_instructions, 
+                        api_key
+                    )
+                    if refined_notes:
+                        st.session_state['generated_notes'] = refined_notes
+                        st.rerun()
+            else:
+                st.warning("Please enter refinement instructions.")
 
 if __name__ == "__main__":
     main()
