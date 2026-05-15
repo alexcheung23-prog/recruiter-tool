@@ -39,7 +39,7 @@ def generate_notes(job_description, candidate_conversation, api_key):
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-flash-latest')
         
         prompt = f"""
         You are an expert recruiter assistant. Your task is to summarize a candidate screening conversation based on a Job Description.
