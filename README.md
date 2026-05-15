@@ -3,7 +3,7 @@
 A Streamlit-based tool for recruiters to summarize screening conversations into non-biased bullet points for hiring managers.
 
 ## Features
-- Input fields for Job Description and Candidate Conversation/Notes.
+- Input fields and file upload support (.txt, .pdf, .docx) for Job Description and Candidate Conversation/Notes.
 - Integration with Gemini AI (via `google-generativeai`) to generate summaries.
 - Non-biased, objective bullet points highlighting key discussion points.
 - Downloadable Markdown summary.
