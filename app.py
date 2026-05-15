@@ -145,13 +145,23 @@ def main():
     
     with col1:
         st.subheader("Job Description")
-        uploaded_jd = st.file_uploader("Upload Job Description", type=["txt", "pdf", "docx"], key="jd_uploader")
-        if uploaded_jd:
-            st.session_state['job_desc_text'] = extract_text_from_file(uploaded_jd)
+        def handle_jd_upload():
+            if st.session_state.jd_uploader:
+                text = extract_text_from_file(st.session_state.jd_uploader)
+                if text:
+                    st.session_state.jd_area = text
+                else:
+                    st.error("Could not extract text from the uploaded Job Description.")
+
+        st.file_uploader(
+            "Upload Job Description", 
+            type=["txt", "pdf", "docx"], 
+            key="jd_uploader", 
+            on_change=handle_jd_upload
+        )
         
         job_description = st.text_area(
             "Paste or edit Job Description", 
-            value=st.session_state['job_desc_text'],
             height=300, 
             placeholder="Paste the job description here...",
             key="jd_area"
@@ -159,13 +169,23 @@ def main():
         
     with col2:
         st.subheader("Candidate Conversation/Notes")
-        uploaded_notes = st.file_uploader("Upload Candidate Notes", type=["txt", "pdf", "docx"], key="notes_uploader")
-        if uploaded_notes:
-            st.session_state['candidate_notes_text'] = extract_text_from_file(uploaded_notes)
+        def handle_notes_upload():
+            if st.session_state.notes_uploader:
+                text = extract_text_from_file(st.session_state.notes_uploader)
+                if text:
+                    st.session_state.notes_area = text
+                else:
+                    st.error("Could not extract text from the uploaded Candidate Notes.")
+
+        st.file_uploader(
+            "Upload Candidate Notes", 
+            type=["txt", "pdf", "docx"], 
+            key="notes_uploader",
+            on_change=handle_notes_upload
+        )
             
         candidate_conversation = st.text_area(
             "Paste or edit Candidate Conversation/Notes", 
-            value=st.session_state['candidate_notes_text'],
             height=300, 
             placeholder="Paste the screening notes or conversation transcript here...",
             key="notes_area"
