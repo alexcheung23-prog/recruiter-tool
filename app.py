@@ -13,23 +13,27 @@ def extract_text_from_file(uploaded_file):
     if uploaded_file is None:
         return ""
     
-    file_extension = os.path.splitext(uploaded_file.name)[1].lower()
-    
-    if file_extension == ".txt":
-        return uploaded_file.getvalue().decode("utf-8")
-    elif file_extension == ".pdf":
-        pdf_reader = PyPDF2.PdfReader(uploaded_file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-        return text
-    elif file_extension == ".docx":
-        doc = docx.Document(uploaded_file)
-        text = ""
-        for para in doc.paragraphs:
-            text += para.text + "\n"
-        return text
-    else:
+    try:
+        file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+        
+        if file_extension == ".txt":
+            return uploaded_file.getvalue().decode("utf-8")
+        elif file_extension == ".pdf":
+            pdf_reader = PyPDF2.PdfReader(uploaded_file)
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text() or ""
+            return text
+        elif file_extension == ".docx":
+            doc = docx.Document(uploaded_file)
+            text = ""
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+            return text
+        else:
+            return ""
+    except Exception as e:
+        st.error(f"Error reading file {uploaded_file.name}: {e}")
         return ""
 
 def get_gemini_model(api_key):
@@ -130,26 +134,25 @@ def main():
         # Try to get API key from environment
         env_api_key = os.getenv("GOOGLE_API_KEY", "")
         
-        # Use session state to manage the active key
+        # Initialize session state for API key
         if 'api_key' not in st.session_state:
             st.session_state['api_key'] = env_api_key
 
-        api_key_input = st.text_input(
-            "Gemini API Key", 
-            type="password", 
-            value=st.session_state['api_key'],
-            help="The API key is automatically loaded from the backend if available. You can override it here."
-        )
-        
-        # Update session state if input changes
-        if api_key_input != st.session_state['api_key']:
-            st.session_state['api_key'] = api_key_input
-            st.rerun()
-
+        # If key is missing from BOTH env and session, show a prominent warning
         if not st.session_state['api_key']:
-            st.warning("Please enter your Gemini API Key to proceed.")
+            st.warning("Gemini API Key missing. Please enter it below.")
+            api_key_input = st.text_input("Enter Gemini API Key", type="password", key="manual_api_key")
+            if api_key_input:
+                st.session_state['api_key'] = api_key_input
+                st.rerun()
         else:
-            st.success("API Key loaded successfully.")
+            # Key exists, show it as an optional override
+            with st.expander("API Key Configuration"):
+                st.success("API Key is active (loaded from backend).")
+                new_key = st.text_input("Override API Key", type="password", value=st.session_state['api_key'])
+                if new_key != st.session_state['api_key']:
+                    st.session_state['api_key'] = new_key
+                    st.rerun()
             
         st.markdown("---")
         st.markdown("Developed for the Recruiter Notes Team")
@@ -159,10 +162,10 @@ def main():
     # Initialize session state
     if 'generated_notes' not in st.session_state:
         st.session_state['generated_notes'] = ""
-    if 'job_desc_text' not in st.session_state:
-        st.session_state['job_desc_text'] = ""
-    if 'candidate_notes_text' not in st.session_state:
-        st.session_state['candidate_notes_text'] = ""
+    if 'jd_area' not in st.session_state:
+        st.session_state['jd_area'] = ""
+    if 'notes_area' not in st.session_state:
+        st.session_state['notes_area'] = ""
 
     # Main input areas
     col1, col2 = st.columns(2)
@@ -174,6 +177,8 @@ def main():
                 text = extract_text_from_file(st.session_state.jd_uploader)
                 if text:
                     st.session_state.jd_area = text
+                    st.session_state.generated_notes = ""
+                    st.rerun()
                 else:
                     st.error("Could not extract text from the uploaded Job Description.")
 
@@ -198,6 +203,8 @@ def main():
                 text = extract_text_from_file(st.session_state.notes_uploader)
                 if text:
                     st.session_state.notes_area = text
+                    st.session_state.generated_notes = ""
+                    st.rerun()
                 else:
                     st.error("Could not extract text from the uploaded Candidate Notes.")
 
